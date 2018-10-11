@@ -2,6 +2,7 @@
  * This is the entry point for your Probot App.
  * @param {import('probot').Application} app - Probot's Application class.
  */
+
 module.exports = app => {
   // Your code here
   app.log('Yay, the app was loaded!')
@@ -53,25 +54,33 @@ module.exports = app => {
     bugfix: 'fix',
     close: 'close'
   }
-  app.on('create_tag', async context => {
+  app.on('create', async context => {
     const payload = context.payload
+    if((payload.action ||payload.ref_type) != 'tag')
+      return
+      
     const owner = payload.repository.owner.login
     const repo = payload.repository.name
     const tag_name = payload.ref
-    const tag = await context.github.repos.getReleaseByTag({owner, repo, tag_name})
+    const tag = await getReleaseByTag(payload, {
+      tag_name: payload.ref
+    })
 
     if(tag !== null) {// If tag exists, return
       return
     }
 
-    const tags = await context.repos.getTags({owner, repo}) 
+    const tags = await getTags(payload)
     if(tags.length < 2){
       return
     }
     const head = tags[0].name
     const base = tags[1].name
 
-    const commitsLog = await context.repos.compareCommits( {owner, repo, base, head})
+    const commitsLog = await compareCommits(payload, {
+      base,
+      head
+    })
     
     const commits = commitsLog.commits
     const changes = Object.keys(RELEASE_CHANGE_MAP).map(title => {
@@ -122,9 +131,108 @@ module.exports = app => {
         body: body.join('\n')
       })
     }
+
+      /**
+     * 根据tag获取发布信息
+     *
+     * @param  {Object} payload          data
+     * @param  {string} options.tag_name tag名
+     *
+     * @return {Object | null}
+     */
+    async function getReleaseByTag (payload, { tag_name } = {}) {
+      const owner = payload.repository.owner.login
+      const repo = payload.repository.name
+      try {
+        const res = await context.github.repos.getReleaseByTag({
+          owner,
+          repo,
+          tag: tag_name
+        })
+        return res.data
+      } catch (e) {
+        //app.log.error(new Error(e))
+        return null
+      }
+    }
+      /**
+     * 获得 repo 所有的tag
+     *
+     * @param {any} payload             data
+     * @return {Array}
+     */
+    async function getTags (payload) {
+      const owner = payload.repository.owner.login
+      const repo = payload.repository.name
+      try {
+        const res = await context.github.repos.getTags({
+          owner,
+          repo
+        })
+        return res.data
+      } catch (e) {
+        app.log.error(new Error(e))
+        return []
+      }
+    }
+    /**
+     * 对比2个提交
+     *
+     * @param  {Object} payload      data
+     * @param  {string} options.base 基点
+     * @param  {string} options.head diff
+     * @return {Array | null}
+     */
+    async function compareCommits (payload, { base, head } = {}) {
+      const owner = payload.repository.owner.login
+      const repo = payload.repository.name
+      try {
+        const res = await context.github.repos.compareCommits({
+          owner,
+          repo,
+          base,
+          head
+        })
+        return res.data
+      } catch (e) {
+        app.log.error(new Error(e))
+        return null
+      }
+    }
+    /**
+     * 创建发布
+     *
+     * @param  {Object} payload                  data
+     * @param  {string} options.tag_name         tag名
+     * @param  {string} options.target_commitish tag hash
+     * @param  {string} options.name             标题
+     * @param  {string} options.body             内容
+     * @param  {boolean} options.draft            是否为草稿
+     * @param  {boolean} options.prerelease       是否预发布
+     * @return {boolean} 是否成功
+     */
+    async function createRelease (payload, { tag_name, target_commitish, name, body, draft, prerelease } = {}) {
+      const owner = payload.repository.owner.login
+      const repo = payload.repository.name
+      try {
+        await github.repos.createRelease({
+          owner,
+          repo,
+          tag_name,
+          target_commitish,
+          name,
+          body,
+          draft,
+          prerelease
+        })
+        return true
+      } catch (e) {
+        app.log.error(new Error(e))
+        return false
+      }
+    }
+
   })
-
-
   // For more information on building apps:
   // https://probot.github.io/docs/
 

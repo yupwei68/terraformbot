@@ -1,10 +1,5 @@
-/**
- * @file github 操作库
- * @author xuexb <fe.xiaowu@gmail.com>
- */
+import {Context} from 'probot'
 
-/* eslint-disable camelcase */
-const GitHub = require('github')
 const { toArray } = require('./utils')
 const { appLog } = require('./logger')
 
