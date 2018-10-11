@@ -215,7 +215,7 @@ module.exports = app => {
       const owner = payload.repository.owner.login
       const repo = payload.repository.name
       try {
-        await github.repos.createRelease({
+        await context.github.repos.createRelease({
           owner,
           repo,
           tag_name,
