@@ -20,7 +20,7 @@ def get_results(url,headers):
         return []
 
 def main():
-    token = "ce6d461b9c529db197db628a3262d090646b5fd6"
+    token = ""
     owner = "Azure"
     name = "terraform-azurerm-compute"
     parser = argparse.ArgumentParser()
